@@ -220,20 +220,20 @@ def generate_real_samples(samples):
 
 def show_results(step, g_model, samples=3):
     # select a sample of input images
-    realA, realB = generate_real_samples(samples)
-    fakeB = g_model.predict(realA[:samples])
-    realA = (realA+1.0)/2.0
-    realB = (realB+1)/2
-    fakeB = (fakeB+1)/2
+    realFaces, realImgs = generate_real_samples(samples)
+    fakeImg = g_model.predict(realFaces[:samples])
+    realFaces = (realFaces+1.0)/2.0
+    realImgs = (realImgs+1)/2
+    fakeImg = (fakeImg+1)/2
     
     for i in range(samples):
         plt.figure(figsize=(15, 15))
         ax = plt.subplot(1, 3, 1)
-        plt.imshow(realA[i])
+        plt.imshow(realFaces[i])
         ax = plt.subplot(1, 3, 2)
-        plt.imshow(realB[i])
+        plt.imshow(realImgs[i])
         ax = plt.subplot(1, 3, 3)
-        plt.imshow(fakeB[i])
+        plt.imshow(fakeImg[i])
     plt.show()
 show_results(0,g_model,3)
 
@@ -250,15 +250,15 @@ def train(d_model, g_model, gan_model, epochs=100, batch=1):
         print(f"Calculating next {steps} batches of size {batch}")
         for i in range(steps):
             # select a batch of real samples
-            realA, realB = generate_real_samples(batch)
+            realFaces, realImgs = generate_real_samples(batch)
             # generate a batch of fake samples
-            fakeB = g_model.predict(realA)
+            fakeImg = g_model.predict(realFaces)
             # update discriminator for real samples
-            d_loss_real = d_model.train_on_batch([realA, realB], all_ones )
+            d_loss_real = d_model.train_on_batch([realFaces, realImgs], all_ones )
             # update discriminator for generated samples
-            d_loss_fake = d_model.train_on_batch([realA, fakeB], all_zeros)
+            d_loss_fake = d_model.train_on_batch([realFaces, fakeImg], all_zeros)
             # update the generator
-            g_loss, _, _ = gan_model.train_on_batch(realA, [all_ones, realB])
+            g_loss, _, _ = gan_model.train_on_batch(realFaces, [all_ones, realImgs])
             #print(f"Iteration {i}/{n_steps} g_loss={g_loss:.3f}, d_loss_real={d_loss_real:.3f}, d_loss_fake={d_loss_fake:.3f}")
             print(".",end='')
         print()    
