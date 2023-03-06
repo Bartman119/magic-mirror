@@ -16,11 +16,11 @@ from tensorflow.keras.optimizers import Adam
 detector = dlib.get_frontal_face_detector()
 
 # Load the predictor
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("../shape_predictor_68_face_landmarks.dat")
 
 # Load the model
 generator_name = 'smiling_lady_gen'
-current_directory = os.getcwd() 
+current_directory = os.path.join(os.getcwd(), '../')
 generator_path = os.path.join(current_directory, r'saved_generator/'+generator_name)
 g_model = tf.keras.models.load_model(generator_path, compile=False)
 
