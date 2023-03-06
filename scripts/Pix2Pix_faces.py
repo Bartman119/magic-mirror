@@ -20,7 +20,7 @@ else:
 
 generator_name = 'smiling_lady_gen'
 current_directory = os.getcwd() 
-generator_path = os.path.join(current_directory, r'saved_generator/'+generator_name)
+generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
 
 # Create generator directory if needed
 if not os.path.exists(generator_path):
@@ -52,8 +52,8 @@ def load_face_images_from_folder(folder):
 
 
 
-trainImgs = np.array(load_original_images_from_folder("output_color"))
-trainFaces = np.array(load_face_images_from_folder("output_mask"))
+trainImgs = np.array(load_original_images_from_folder("../training_datasets/smiling_lady/output_color"))
+trainFaces = np.array(load_face_images_from_folder("../training_datasets/smiling_lady/output_mask"))
 trainImgs = trainImgs/255.0
 trainFaces = trainFaces/255.0
 
