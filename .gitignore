@@ -133,5 +133,6 @@ dmypy.json
 *.mp4
 saved_generator/
 raw_recordings/
+screens/
 
 
