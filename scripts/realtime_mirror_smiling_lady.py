@@ -24,9 +24,12 @@ current_directory = os.path.join(os.getcwd(), '../')
 generator_path = os.path.join(current_directory, r'saved_generator/'+generator_name)
 g_model = tf.keras.models.load_model(generator_path, compile=False)
 
+target_image = cv2.imread('../training_datasets/smiling_lady/output_color/test_1.png')
+target_image = cv2.resize(target_image, (256, 256))
+
 g_model.summary()
 
-def show_generated_frame(realMask, realImg, g_model):
+def show_generated_frame(targetImg, realImg, g_model):
     realImg = realImg.astype(np.float32) / 127.5 - 1.0
     realImg = np.expand_dims(realImg, axis=0) # add batch dimension
 
@@ -45,7 +48,7 @@ def show_generated_frame(realMask, realImg, g_model):
     
     plt.figure(figsize=(15, 15))
     ax = plt.subplot(1, 3, 1)
-    plt.imshow(realMask)
+    plt.imshow(targetImg)
     ax = plt.subplot(1, 3, 2)
     plt.imshow(realImg)
     ax = plt.subplot(1, 3, 3)
@@ -105,6 +108,6 @@ while True:
     # realImg = (realImg - 0.5) / 0.5
 
     #current error: Input 0 of layer "model_4" is incompatible with the layer: expected shape=(None, 256, 256, 3), found shape=(32, 256, 3)
-    show_generated_frame(realMask, realImg, g_model)  
+    show_generated_frame(target_image, realImg, g_model)  
         
 
