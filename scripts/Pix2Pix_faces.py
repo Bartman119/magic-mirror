@@ -6,6 +6,7 @@ import cv2
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 import tensorflow as tf
+from tensorflow.keras import activations
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten, Conv2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization, Input, Concatenate, LeakyReLU, Conv2DTranspose
@@ -149,7 +150,7 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
     # merge with skip connection
     g = Concatenate()([g, skip_in])
     # relu activation
-    g = Activation('relu')(g) #change to leaky?
+    g = Activation(tf.nn.leaky_relu)(g) #CHANGED FROM RELU TO LEAKY
     return g
 
 #GENERATOR MODEL
@@ -169,7 +170,7 @@ def define_generator(image_shape=(256,256,3)):
     e7 = encoder_block(e6, 512)
     # bottleneck, no batch norm and relu
     b = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(e7)
-    b = Activation('relu')(b)
+    b = Activation(tf.nn.leaky_relu)(b) #CHANGED FROM RELU TO LEAKY
     # decoder model
     d1 = decoder_block(b, e7, 512)
     d2 = decoder_block(d1, e6, 512)

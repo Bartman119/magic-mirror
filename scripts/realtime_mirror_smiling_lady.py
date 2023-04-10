@@ -69,19 +69,32 @@ def __get_data__():
 
 #read images indefinitely
 while True:
-    ##CREATE A MASK
-    #for sm in range(1,length-1):
-    realImg, gray_fr = __get_data__()
-    #DEBUGGING PUPROSES
-    cv2.imshow('readFace',realImg)
-
     #stop executing
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+    ##CREATE A MASK
+    realImg, gray_fr = __get_data__()
 
-    faces = detector(gray_fr)
-    realMask = np.zeros((realImg.shape[0], realImg.shape[1], 3), np.uint8)
-    print("SHAPE 1: ", realMask.shape)
+    face_cascade = cv2.CascadeClassifier("../haarcascade_frontalface_default.xml")
+    faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.1, minNeighbors=5)
+
+    # Extract the face from the image and crop the image to focus on the face
+    for (x, y, w, h) in faces:
+        face_image = realImg[y:y+h, x:x+w]
+        break
+
+    # Resize the image to 256x256
+    resized_image = cv2.resize(face_image, (256, 256))
+    gray_resized_img = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+    faces = detector(gray_resized_img)
+
+    #DEBUGGING PUPROSES
+    #cv2.imshow('readFace',resized_image)
+    #DEBUGGING PUPROSES
+    #cv2.imshow('readGrayFace',gray_resized_img)
+
+    realMask = np.zeros((resized_image.shape[0], resized_image.shape[1], 3), np.uint8)
+    print("SHAPE 1: ", resized_image.shape)
     for face in faces:
         x1 = face.left() # left point
         y1 = face.top() # top point
@@ -106,8 +119,6 @@ while True:
     # recalcuate to (-1,1)
     # realMask = (realMask - 0.5) / 0.5
     # realImg = (realImg - 0.5) / 0.5
-
-    #current error: Input 0 of layer "model_4" is incompatible with the layer: expected shape=(None, 256, 256, 3), found shape=(32, 256, 3)
-    show_generated_frame(target_image, realImg, g_model)  
+    show_generated_frame(target_image, resized_image, g_model)  
         
 

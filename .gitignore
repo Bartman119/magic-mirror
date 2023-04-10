@@ -134,5 +134,7 @@ dmypy.json
 saved_generator/
 raw_recordings/
 screens/
+dlip_materials/
+training_datasets/
 
 
