@@ -18,6 +18,11 @@ OUTPUT_FACE_MASK_PATH = "../training_datasets/unshaved_me/output_face_mask"
 OUTPUT_FACE_COLOR_PATH = "../training_datasets/unshaved_me/output_face_color"
 RECORDING_PATH = '../raw_recordings/unshaved_me/test3_closeup.mp4'
 
+#OPTION 1: DEFINE PADDING FOR IMAGE
+
+# Define the amount of padding to be added
+#pad = 50
+
 if not os.path.exists(OUTPUT_FACE_COLOR_PATH):
     os.makedirs(OUTPUT_FACE_COLOR_PATH)
 
@@ -32,10 +37,17 @@ def load_img(indir):
     for file in os.listdir(indir):
         image = cv2.imread("{}/{}".format(indir,file))
         image = cv2.resize(image, (256,256))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #this might fuck up coloring
+        #OPTION 1: ADD PADDING TO IMAGE
+
+        # Add padding to the image
+        #padded_img = cv2.copyMakeBorder(image, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+
+        #samples.append(padded_img)
         samples.append(image)
         if image_count%10==0: print('.',end='')
         image_count = image_count + 1
+
     samples = np.array(samples)
     return samples
 
@@ -50,14 +62,21 @@ aug = ImageDataGenerator(
 
 
 def create_images(dir,images,number=500):
+
     images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="test_", save_format="png")
     total = 0
     for image in images:
-         total += 1
-         if total == number: 
+        #OPTION 1: USE TRANSFORM AND REMOVE PADDING
+        # Apply the augmentation techniques to the padded image using ImageDataGenerator
+        #augmented_img = aug.random_transform(padded_img)
+
+        # Crop the resulting image back to its original size
+        #cropped_img = augmented_img[pad:-pad, pad:-pad]
+        total += 1
+        if total == number: 
             print("{} images generated to {}".format(total,dir))
             break
-         if total%(number/100)==0: print('.',end='')   
+        if total%(number/100)==0: print('.',end='')   
 
 rgb = cv2.VideoCapture(RECORDING_PATH)
 length = int(rgb.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -128,11 +147,6 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
         for n in range(0, 68):
             x = landmarks.part(n).x
             y = landmarks.part(n).y
-
-            # Draw a circle
-            #cv2.circle(img=fr, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1)
-
-            #Create mask image
             
             cv2.circle(img=image, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1)
         plt.clf()
@@ -140,17 +154,6 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
         plt.axis('off')
         plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}".format(file), bbox_inches='tight')
 
-
-
-#output.write(image)
-#plt.imshow(resized_image)
-#data = plt.imread(gray_fr)
-#plt.axis('off')
-#plt.savefig("../training_datasets/smiling_lady/output_face_color/{}_{}.png".format(basename, ix), bbox_inches='tight')
-#plt.clf()
-#plt.imshow(image)
-#plt.axis('off')
-#plt.savefig("../training_datasets/smiling_lady/output_face_mask/{}_{}.png".format(basename, ix), bbox_inches='tight')
 rgb.release()
 
 # Delay between every fram
