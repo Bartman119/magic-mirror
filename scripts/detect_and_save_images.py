@@ -14,7 +14,15 @@ detector = dlib.get_frontal_face_detector()
 # Load the predictor
 predictor = dlib.shape_predictor("../shape_predictor_68_face_landmarks.dat")
 
-OUTPUT_FACE_COLOR_PATH = "../training_datasets/smiling_lady/output_face_color"
+OUTPUT_FACE_MASK_PATH = "../training_datasets/unshaved_me/output_face_mask"
+OUTPUT_FACE_COLOR_PATH = "../training_datasets/unshaved_me/output_face_color"
+RECORDING_PATH = '../raw_recordings/unshaved_me/test3_closeup.mp4'
+
+if not os.path.exists(OUTPUT_FACE_COLOR_PATH):
+    os.makedirs(OUTPUT_FACE_COLOR_PATH)
+
+if not os.path.exists(OUTPUT_FACE_MASK_PATH):
+    os.makedirs(OUTPUT_FACE_MASK_PATH)
 
 basename = "test"
 image_count = 0
@@ -32,7 +40,7 @@ def load_img(indir):
     return samples
 
 aug = ImageDataGenerator(
-    rotation_range=20,
+    rotation_range=0,
     zoom_range=0.15,
     width_shift_range=0.2,
     height_shift_range=0.2,
@@ -42,7 +50,7 @@ aug = ImageDataGenerator(
 
 
 def create_images(dir,images,number=500):
-    images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="aug_", save_format="png")
+    images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="test_", save_format="png")
     total = 0
     for image in images:
          total += 1
@@ -51,7 +59,7 @@ def create_images(dir,images,number=500):
             break
          if total%(number/100)==0: print('.',end='')   
 
-rgb = cv2.VideoCapture('../raw_recordings/smiling_lady.mp4')
+rgb = cv2.VideoCapture(RECORDING_PATH)
 length = int(rgb.get(cv2.CAP_PROP_FRAME_COUNT))
 fps = int(rgb.get(cv2.CAP_PROP_FPS))
 
@@ -65,7 +73,7 @@ ix = 0
 width  = int(rgb.get(3)) # float
 height = int(rgb.get(4))
 fourcc = cv2.VideoWriter_fourcc(*'vp90')
-PATH = '../raw_recordings/smiling_lady_face_mask.webm'
+#PATH = '../raw_recordings/smiling_lady_face_mask.webm'
 #output = cv2.VideoWriter(PATH,fourcc, fps, (width,height))
 
 for sm in range(1,length-1):
@@ -91,7 +99,7 @@ for sm in range(1,length-1):
 
         plt.imshow(resized_image)
         plt.axis('off')
-        plt.savefig("../training_datasets/smiling_lady/output_face_color/{}_{}.png".format(basename, ix), bbox_inches='tight')
+        plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, ix), bbox_inches='tight')
         plt.clf()
         sys.stdout.write(f"writing...{int((sm/length)*100)+1}%\n")
         sys.stdout.flush()
@@ -130,7 +138,7 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
         plt.clf()
         plt.imshow(image)
         plt.axis('off')
-        plt.savefig("../training_datasets/smiling_lady/output_face_mask/{}_{}.png".format(basename, i), bbox_inches='tight')
+        plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}.png".format(file), bbox_inches='tight')
 
 
 

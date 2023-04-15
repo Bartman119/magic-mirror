@@ -30,7 +30,7 @@ if not os.path.exists(generator_path):
 
 
 # load data from two folders
-n = 658
+n = 658 # CHANGE PROGRAMATICALLY
 size = 256
 trainImgs = []
 trainFaces = []
