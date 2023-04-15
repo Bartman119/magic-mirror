@@ -138,7 +138,7 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
         plt.clf()
         plt.imshow(image)
         plt.axis('off')
-        plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}.png".format(file), bbox_inches='tight')
+        plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}".format(file), bbox_inches='tight')
 
 
 
@@ -158,3 +158,5 @@ cv2.waitKey(delay=0)
 
 # Close all windows
 cv2.destroyAllWindows()
+
+# TODO: FIX COLORING PROBLEM and find a better way of augmenting without white bars
