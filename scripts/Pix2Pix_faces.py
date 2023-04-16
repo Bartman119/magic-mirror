@@ -22,6 +22,8 @@ else:
 generator_name = 'smiling_lady_gen'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
+IMAGES_PATH = "../training_datasets/smiling_lady/output_color"
+MASK_PATH = "../training_datasets/smiling_lady/output_mask"
 
 # Create generator directory if needed
 if not os.path.exists(generator_path):
@@ -53,8 +55,8 @@ def load_face_images_from_folder(folder):
 
 
 
-trainImgs = np.array(load_original_images_from_folder("../training_datasets/smiling_lady/output_color"))
-trainFaces = np.array(load_face_images_from_folder("../training_datasets/smiling_lady/output_mask"))
+trainImgs = np.array(load_original_images_from_folder(IMAGES_PATH))
+trainFaces = np.array(load_face_images_from_folder(MASK_PATH))
 trainImgs = trainImgs/255.0
 trainFaces = trainFaces/255.0
 
@@ -155,13 +157,18 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
 
 #GENERATOR MODEL
 # define the standalone generator model
-def define_generator(image_shape=(256,256,3)):
+def define_generator(image_shape=(256,256,3), mask_shape=(256,256,1)):
     # weight initialization
     init = RandomNormal(stddev=0.02)
     # image input
     in_image = Input(shape=image_shape)
+    # mask input
+    in_mask = Input(shape=mask_shape)
+    # concatenate image and mask inputs
+    merged = Concatenate()([in_image, in_mask])
+    
     # encoder model
-    e1 = encoder_block(in_image, 64, batchnorm=False)
+    e1 = encoder_block(merge, 64, batchnorm=False)
     e2 = encoder_block(e1, 128)
     e3 = encoder_block(e2, 256)
     e4 = encoder_block(e3, 512)
@@ -183,22 +190,24 @@ def define_generator(image_shape=(256,256,3)):
     g = Conv2DTranspose(3, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d7)
     out_image = Activation('tanh')(g)
     # define model
-    model = Model(in_image, out_image)
+    model = Model([in_image, in_mask], out_image)
     return model
     
 g_model = define_generator()
 print(g_model.summary())
 
 # define the combined generator and discriminator model, for updating the generator
-def define_gan(g_model, d_model, image_shape):
+def define_gan(g_model, d_model, image_shape, mask_shape):
     # make weights in the discriminator not trainable
     for layer in d_model.layers:
         if not isinstance(layer, BatchNormalization):
             layer.trainable = False
     # define the source image
     in_src = Input(shape=image_shape)
+    # define the mask image
+    in_mask = Input(shape=mask_shape)
     # connect the source image to the generator input
-    gen_out = g_model(in_src)
+    gen_out = g_model(in_src, in_mask)
     # connect the source input and generator output to the discriminator input
     dis_out = d_model([in_src, gen_out])
     # src image as input, generated image and classification output
@@ -206,7 +215,7 @@ def define_gan(g_model, d_model, image_shape):
     opt = Adam(lr=0.001, beta_1=0.5)
     model.compile(loss=['binary_crossentropy', 'mae'], optimizer=opt, loss_weights=[1,100])
     return model
-gan_model = define_gan(g_model, d_model, (256,256,3))
+gan_model = define_gan(g_model, d_model, (256,256,3), (256,256,3))
 
 # select a batch of random samples, returns images and target
 def generate_real_samples(samples):
@@ -222,7 +231,7 @@ def generate_real_samples(samples):
 def show_results(step, g_model, samples=3):
     # select a sample of input images
     realFaces, realImgs = generate_real_samples(samples)
-    fakeImg = g_model.predict(realFaces[:samples])
+    fakeImg = g_model.predict([realImgs[:samples], realFaces[:samples]])
     realFaces = (realFaces+1.0)/2.0
     realImgs = (realImgs+1)/2
     fakeImg = (fakeImg+1)/2
@@ -253,7 +262,7 @@ def train(d_model, g_model, gan_model, epochs=100, batch=1):
             # select a batch of real samples
             realFaces, realImgs = generate_real_samples(batch)
             # generate a batch of fake samples
-            fakeImg = g_model.predict(realFaces)
+            fakeImg = g_model.predict([realImgs, realFaces])
             # update discriminator for real samples
             d_loss_real = d_model.train_on_batch([realFaces, realImgs], all_ones )
             # update discriminator for generated samples
@@ -270,9 +279,10 @@ def save_generator(g_model, generator_path):
     
 # load image data
 image_shape = (256,256,3) #dataset[0].shape[1:]
+mask_shape = (256,256,1)
 # define the models
 d_model = define_discriminator(image_shape)
-g_model = define_generator(image_shape)
+g_model = define_generator(image_shape, mask_shape)
 # define the composite model
 gan_model = define_gan(g_model, d_model, image_shape)
 

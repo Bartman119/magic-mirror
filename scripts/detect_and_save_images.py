@@ -37,7 +37,7 @@ def load_img(indir):
     for file in os.listdir(indir):
         image = cv2.imread("{}/{}".format(indir,file))
         image = cv2.resize(image, (256,256))
-        #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #this might fuck up coloring
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #this is supposedly used to make data manipulation easier
         #OPTION 1: ADD PADDING TO IMAGE
 
         # Add padding to the image
@@ -84,6 +84,7 @@ fps = int(rgb.get(cv2.CAP_PROP_FPS))
 
 def __get_data__():
     _, fr = rgb.read()
+    fr = cv2.cvtColor(fr, cv2.COLOR_RGB2BGR)
     gray = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY)
     
     return fr, gray
@@ -113,9 +114,10 @@ for sm in range(1,length-1):
 
         # Resize the image to 256x256
         resized_image = cv2.resize(face_image, (256, 256))
+        # Reconvert image back to BGR format
+        resized_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
 
         #Save images
-
         plt.imshow(resized_image)
         plt.axis('off')
         plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, ix), bbox_inches='tight')
@@ -148,7 +150,8 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
             x = landmarks.part(n).x
             y = landmarks.part(n).y
             
-            cv2.circle(img=image, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1)
+            cv2.circle(img=image, center=(x, y), radius=3, color=255, thickness=-1)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) # convert to 1 channel
         plt.clf()
         plt.imshow(image)
         plt.axis('off')
