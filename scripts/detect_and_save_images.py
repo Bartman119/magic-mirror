@@ -21,7 +21,7 @@ RECORDING_PATH = '../raw_recordings/unshaved_me/test3_closeup.mp4'
 #OPTION 1: DEFINE PADDING FOR IMAGE
 
 # Define the amount of padding to be added
-#pad = 50
+pad = 50
 
 if not os.path.exists(OUTPUT_FACE_COLOR_PATH):
     os.makedirs(OUTPUT_FACE_COLOR_PATH)
@@ -41,10 +41,10 @@ def load_img(indir):
         #OPTION 1: ADD PADDING TO IMAGE
 
         # Add padding to the image
-        #padded_img = cv2.copyMakeBorder(image, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+        padded_img = cv2.copyMakeBorder(image, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
 
-        #samples.append(padded_img)
-        samples.append(image)
+        samples.append(padded_img)
+        #samples.append(image)
         if image_count%10==0: print('.',end='')
         image_count = image_count + 1
 
@@ -63,16 +63,20 @@ aug = ImageDataGenerator(
 
 def create_images(dir,images,number=500):
 
-    images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="test_", save_format="png")
+    #images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="test_", save_format="png")
     total = 0
     for image in images:
         #OPTION 1: USE TRANSFORM AND REMOVE PADDING
         # Apply the augmentation techniques to the padded image using ImageDataGenerator
-        #augmented_img = aug.random_transform(padded_img)
+        augmented_img = aug.random_transform(image)
 
         # Crop the resulting image back to its original size
-        #cropped_img = augmented_img[pad:-pad, pad:-pad]
+        cropped_img = augmented_img[pad:-pad, pad:-pad]
         total += 1
+        plt.imshow(cropped_img)
+        plt.axis('off')
+        plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, total), bbox_inches='tight')
+        plt.clf()
         if total == number: 
             print("{} images generated to {}".format(total,dir))
             break
@@ -115,7 +119,7 @@ for sm in range(1,length-1):
         # Resize the image to 256x256
         resized_image = cv2.resize(face_image, (256, 256))
         # Reconvert image back to BGR format
-        resized_image = cv2.cvtColor(resized_image, cv2.COLOR_RGB2BGR)
+        resized_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)
 
         #Save images
         plt.imshow(resized_image)
