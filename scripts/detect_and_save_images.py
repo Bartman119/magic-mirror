@@ -22,6 +22,8 @@ RECORDING_PATH = '../raw_recordings/unshaved_me/test3_closeup.mp4'
 
 # Define the amount of padding to be added
 pad = 50
+height_shift_up = 200
+width_shift_right = 40
 
 if not os.path.exists(OUTPUT_FACE_COLOR_PATH):
     os.makedirs(OUTPUT_FACE_COLOR_PATH)
@@ -37,13 +39,16 @@ def load_img(indir):
     for file in os.listdir(indir):
         image = cv2.imread("{}/{}".format(indir,file))
         image = cv2.resize(image, (256,256))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #this is supposedly used to make data manipulation easier
-        #OPTION 1: ADD PADDING TO IMAGE
+        #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        # plt.figure(figsize=(5, 5))
+        # ax = plt.subplot(1, 1, 1)
+        # plt.imshow(image)
+        # plt.show()
 
         # Add padding to the image
-        padded_img = cv2.copyMakeBorder(image, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+        #padded_img = cv2.copyMakeBorder(image, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
 
-        samples.append(padded_img)
+        samples.append(image)
         #samples.append(image)
         if image_count%10==0: print('.',end='')
         image_count = image_count + 1
@@ -62,7 +67,6 @@ aug = ImageDataGenerator(
 
 
 def create_images(dir,images,number=500):
-
     #images = aug.flow(images, batch_size=1, save_to_dir=dir,save_prefix="test_", save_format="png")
     total = 0
     for image in images:
@@ -71,12 +75,13 @@ def create_images(dir,images,number=500):
         augmented_img = aug.random_transform(image)
 
         # Crop the resulting image back to its original size
-        cropped_img = augmented_img[pad:-pad, pad:-pad]
+        #cropped_img = augmented_img[pad:-pad, pad:-pad]
         total += 1
-        plt.imshow(cropped_img)
-        plt.axis('off')
-        plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, total), bbox_inches='tight')
-        plt.clf()
+        # plt.imshow(augmented_img)
+        # plt.axis('off')
+        # plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, total), bbox_inches='tight')
+        # plt.clf()
+        cv2.imwrite(OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, total), augmented_img)
         if total == number: 
             print("{} images generated to {}".format(total,dir))
             break
@@ -88,15 +93,16 @@ fps = int(rgb.get(cv2.CAP_PROP_FPS))
 
 def __get_data__():
     _, fr = rgb.read()
-    fr = cv2.cvtColor(fr, cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(fr, cv2.COLOR_RGB2GRAY)
+    #grayConverted = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    #frConverted = cv2.cvtColor(fr, cv2.COLOR_RGB2BGR)
     
     return fr, gray
 
 ix = 0
 width  = int(rgb.get(3)) # float
 height = int(rgb.get(4))
-fourcc = cv2.VideoWriter_fourcc(*'vp90')
+#fourcc = cv2.VideoWriter_fourcc(*'vp90')
 #PATH = '../raw_recordings/smiling_lady_face_mask.webm'
 #output = cv2.VideoWriter(PATH,fourcc, fps, (width,height))
 
@@ -109,36 +115,51 @@ for sm in range(1,length-1):
 
         # Use a face detection cascade classifier to detect the face
         face_cascade = cv2.CascadeClassifier("../haarcascade_frontalface_default.xml")
-        faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.1, minNeighbors=5)
+        faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.5, minNeighbors=5)
 
         # Extract the face from the image and crop the image to focus on the face
+        #TODO: training videos have no space to zoom out! Would have to reshoot for better results
         for (x, y, w, h) in faces:
-            face_image = fr[y:y+h, x:x+w]
+            #face_image = fr[y-pad+height_shift_up:y+h+pad+height_shift_up, x-pad-width_shift_right:x+w+pad-width_shift_right] #extend the crop to a set amount of pixels each side
+            face_image = fr[(y-pad+height_shift_up):y+h+pad+height_shift_up, x-pad:x+w+pad] #extend the crop to a set amount of pixels each side
+            #print('{}, {}, {}, {}'.format(x, y, w, h))
             break
 
         # Resize the image to 256x256
-        resized_image = cv2.resize(face_image, (256, 256))
-        # Reconvert image back to BGR format
-        resized_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)
+        if face_image.any():
+            resized_image = cv2.resize(face_image, (256, 256))
+            cv2.imwrite(OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, ix), resized_image)
 
-        #Save images
-        plt.imshow(resized_image)
-        plt.axis('off')
-        plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, ix), bbox_inches='tight')
-        plt.clf()
-        sys.stdout.write(f"writing...{int((sm/length)*100)+1}%\n")
-        sys.stdout.flush()
+            # #Save images
+            # plt.imshow(resized_image)
+            # #print(resized_image.shape)
+            # plt.axis('off')
+            # plt.savefig( OUTPUT_FACE_COLOR_PATH + "/{}_{}.png".format(basename, ix), bbox_inches='tight')
+            # plt.clf()
+            sys.stdout.write(f"writing...{int((sm/length)*100)+1}%\n")
+            sys.stdout.flush()
 
-images = load_img(OUTPUT_FACE_COLOR_PATH)
+# images = load_img(OUTPUT_FACE_COLOR_PATH)
 #Create augments from extracted images, append them to directory
-create_images(OUTPUT_FACE_COLOR_PATH, images, image_count*10)
+# create_images(OUTPUT_FACE_COLOR_PATH, images, image_count*10)
 
 i = 0
 #Create mask for each image
 for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
     resized_augmented_image = cv2.imread("{}/{}".format(OUTPUT_FACE_COLOR_PATH,file))
+    print(resized_augmented_image.shape)
+
+    resized_augmented_gray = cv2.cvtColor(resized_augmented_image, cv2.COLOR_RGB2GRAY)
+    print(resized_augmented_gray.shape)
     i += 1
-    faces = detector(resized_augmented_image)
+    faces = detector(resized_augmented_gray)
+    #print(faces)
+    # plt.figure(figsize=(5, 5))
+    # ax = plt.subplot(1, 1, 1)
+    # plt.imshow(resized_augmented_converted_gray)
+    # plt.show()
+    if not faces:
+        print('face not found for image {}!'.format(i))
     for face in faces:
         x1 = face.left() # left point
         y1 = face.top() # top point
@@ -146,7 +167,7 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
         y2 = face.bottom() # bottom point
 
         # Create landmark object
-        landmarks = predictor(image=resized_augmented_image, box=face)
+        landmarks = predictor(image=resized_augmented_gray, box=face)
 
         image = np.zeros((resized_augmented_image.shape[0], resized_augmented_image.shape[1], 3), np.uint8)
         # Loop through all the points
@@ -154,12 +175,13 @@ for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
             x = landmarks.part(n).x
             y = landmarks.part(n).y
             
-            cv2.circle(img=image, center=(x, y), radius=3, color=255, thickness=-1)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) # convert to 1 channel
-        plt.clf()
-        plt.imshow(image)
-        plt.axis('off')
-        plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}".format(file), bbox_inches='tight')
+            cv2.circle(img=image, center=(x, y), radius=2, color=(255,255,255), thickness=-1)
+        cv2.imwrite(OUTPUT_FACE_MASK_PATH + "/{}".format(file), image)
+
+        # plt.clf()
+        # plt.imshow(image)
+        # plt.axis('off')
+        # plt.savefig(OUTPUT_FACE_MASK_PATH + "/{}".format(file), bbox_inches='tight')
 
 rgb.release()
 
@@ -168,5 +190,3 @@ cv2.waitKey(delay=0)
 
 # Close all windows
 cv2.destroyAllWindows()
-
-# TODO: FIX COLORING PROBLEM and find a better way of augmenting without white bars

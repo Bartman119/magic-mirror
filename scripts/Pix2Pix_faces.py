@@ -19,7 +19,7 @@ else:
 
 # Saved Generator path
 
-generator_name = 'smiling_lady_gen'
+generator_name = 'unshaved_me_1.2'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
 IMAGES_PATH = "../training_datasets/unshaved_me/output_face_color"
@@ -39,65 +39,60 @@ if not os.path.exists(MASK_PATH):
 n = len(os.listdir(MASK_PATH))
 size = 256
 trainImgs = []
-trainFaces = []
+trainMaps = []
 
 def load_original_images_from_folder(faceFolder, targetFolder):
     for filename in os.listdir(faceFolder):
         img = cv2.imread(os.path.join(targetFolder,filename))
-        img = cv2.resize(img, (256, 256))
+        print(img.shape)
+        if img is not None:
+            trainMaps.append(img)
+    return trainMaps
+
+
+def load_face_images_from_folder(folder):
+    for filename in os.listdir(folder):
+        
+        img = cv2.imread(os.path.join(folder,filename))
+        print('normal: {}'.format(img.shape))
+        # img = cv2.imread(os.path.join(folder,filename))
+        # print('grayscale: {}'.format(img.shape))
         if img is not None:
             trainImgs.append(img)
     return trainImgs
 
 
-def load_face_images_from_folder(folder):
-    for filename in os.listdir(folder):
-        img = cv2.imread(os.path.join(folder,filename))
-        img = cv2.resize(img, (256, 256))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) # convert to 1 channel?
-        if img is not None:
-            trainFaces.append(img)
-    return trainFaces
-
-
-trainFaces = np.array(load_face_images_from_folder(MASK_PATH))
-trainImgs = np.array(load_original_images_from_folder(MASK_PATH,IMAGES_PATH))
+trainImgs = np.array(load_face_images_from_folder(MASK_PATH))
+trainMaps = np.array(load_original_images_from_folder(MASK_PATH,IMAGES_PATH))
 
 trainImgs = trainImgs/255.0
-trainFaces = trainFaces/255.0
+trainMaps = trainMaps/255.0
 
-print(trainImgs.shape)
 
 import matplotlib.pyplot as plt
 import random
-plt.figure(figsize=(15, 15))
-n = 3
+n = 2
 x = 1
 for i in range(n):
-    ax = plt.subplot(3, 2, x)
-    x = x + 1
-    plt.imshow(trainFaces[i])
-    plt.axis("off")
-    ax = plt.subplot(3, 2, x)
-    x = x + 1
-    plt.imshow(trainImgs[i])
-    plt.axis("off")
-plt.show()
+    cv2.imshow("RealImage", trainMaps[i])
+    cv2.imshow("Mask", trainImgs[i])
+    cv2.waitKey(1)
 
 # recalcuate to (-1,1)
 trainImgs = (trainImgs - 0.5) / 0.5
-trainFaces = (trainFaces - 0.5) / 0.5
+trainMaps = (trainMaps - 0.5) / 0.5
+#trainMaps1Dim = (trainMaps - 0.5) / 0.5
 
 #DISCRIMINATOR MODEL
 from tensorflow.keras.initializers import RandomNormal
 # define the discriminator model
-def define_discriminator(image_shape, gen_output_shape):
+def define_discriminator(image_shape):
     # weight initialization
     init = RandomNormal(stddev=0.02)
     # source image input A
     in_src_image = Input(shape=image_shape)
     # target image input B
-    in_target_image = Input(shape=gen_output_shape)
+    in_target_image = Input(shape=image_shape)
     # concatenate images channel-wise
     merged = Concatenate()([in_src_image, in_target_image])
     # C64
@@ -128,7 +123,7 @@ def define_discriminator(image_shape, gen_output_shape):
     opt = Adam(lr=0.0002, beta_1=0.5)
     model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=[0.5])
     return model
-d_model = define_discriminator((256,256,3), (256,256,4))
+d_model = define_discriminator((256,256,3))
 print(d_model.summary())
 
 # define an encoder block
@@ -158,7 +153,8 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
     # merge with skip connection
     g = Concatenate()([g, skip_in])
     # relu activation
-    g = Activation(tf.nn.leaky_relu)(g) #CHANGED FROM RELU TO LEAKY
+    g = Activation('relu')(g)
+    # g = Activation(tf.nn.leaky_relu)(g) #CHANGED FROM RELU TO LEAKY
     return g
 
 #GENERATOR MODEL
@@ -167,18 +163,16 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
 #possibly generator and discriminator are over-enginnered now
 #TODO: make generator take 4 dimension input (as it is now) and output a 3 dim image from it?
 #this would make discriminator simpler too
-def define_generator(image_shape=(256,256,3), mask_shape=(256,256,1)):
+def define_generator(image_shape=(256,256,3)):
     # weight initialization
     init = RandomNormal(stddev=0.02)
     # image input
     in_image = Input(shape=image_shape)
     # mask input
-    in_mask = Input(shape=mask_shape)
     # concatenate image and mask inputs
-    merged = Concatenate()([in_image, in_mask])
     
     # encoder model
-    e1 = encoder_block(merged, 64, batchnorm=False)
+    e1 = encoder_block(in_image, 64, batchnorm=False)
     e2 = encoder_block(e1, 128)
     e3 = encoder_block(e2, 256)
     e4 = encoder_block(e3, 512)
@@ -187,20 +181,21 @@ def define_generator(image_shape=(256,256,3), mask_shape=(256,256,1)):
     e7 = encoder_block(e6, 512)
     # bottleneck, no batch norm and relu
     b = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(e7)
-    b = Activation(tf.nn.leaky_relu)(b) #CHANGED FROM RELU TO LEAKY
+    b = Activation('relu')(b)
+    # b = Activation(tf.nn.leaky_relu)(b) #CHANGED FROM RELU TO LEAKY
     # decoder model
     d1 = decoder_block(b, e7, 512)
     d2 = decoder_block(d1, e6, 512)
     d3 = decoder_block(d2, e5, 512)
-    d4 = decoder_block(d3, e4, 512, dropout=True)
-    d5 = decoder_block(d4, e3, 256, dropout=True)
+    d4 = decoder_block(d3, e4, 512, dropout=False)
+    d5 = decoder_block(d4, e3, 256, dropout=False)
     d6 = decoder_block(d5, e2, 128, dropout=False)
     d7 = decoder_block(d6, e1, 64, dropout=False)
     # output
-    g = Conv2DTranspose(4, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d7)
+    g = Conv2DTranspose(3, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d7)
     out_image = Activation('tanh')(g)
     # define model
-    model = Model([in_image, in_mask], out_image)
+    model = Model(in_image, out_image)
     
     return model
     
@@ -208,58 +203,58 @@ g_model = define_generator()
 print(g_model.summary())
 
 # define the combined generator and discriminator model, for updating the generator
-def define_gan(g_model, d_model, image_shape, mask_shape):
+def define_gan(g_model, d_model, image_shape):
     # make weights in the discriminator not trainable
     for layer in d_model.layers:
         if not isinstance(layer, BatchNormalization):
             layer.trainable = False
     # define the source image
     in_src = Input(shape=image_shape)
-    # define the mask image
-    in_mask = Input(shape=mask_shape)
     # connect the source image to the generator input
-    gen_out = g_model([in_src, in_mask])
+    gen_out = g_model(in_src)
     # connect the source input and generator output to the discriminator input
     dis_out = d_model([in_src, gen_out])
     # src image as input, generated image and classification output
-    model = Model([in_src, in_mask], [dis_out, gen_out])
-    opt = Adam(lr=0.001, beta_1=0.5)
+    model = Model(in_src, [dis_out, gen_out])
+    opt = Adam(lr=0.0002, beta_1=0.5)
     model.compile(loss=['binary_crossentropy', 'mae'], optimizer=opt, loss_weights=[1,100])
     return model
-gan_model = define_gan(g_model, d_model, (256,256,3), (256,256,1))
+gan_model = define_gan(g_model, d_model, (256,256,3))
 
 # select a batch of random samples, returns images and target
 def generate_real_samples(samples):
     iImg = randint(0, trainImgs.shape[0], samples)
     #added line
-    #iFace = randint(0, trainFaces.shape[0], samples)
+    #iFace = randint(0, trainMaps.shape[0], samples)
     #PREVIOUS SOLUTION
-    X1, X2 = trainFaces[iImg], trainImgs[iImg]
+    X1, X2 = trainImgs[iImg], trainMaps[iImg]
     #SOLUTION FOR ONE IMAGE (this will probably suck)
-    #X1, X2 = trainFaces[iImg], trainImgs[0] 
+    #X1, X2 = trainMaps[iImg], trainImgs[0] 
     return X1, X2
 
-def show_results(step, g_model, samples=3):
+
+def show_results(step, g_model, samples=1, delay=0):
     # select a sample of input images
-    realFaces, realImgs = generate_real_samples(samples)
-    fakeImg = g_model.predict([realImgs[:samples], realFaces[:samples]])
-    realFaces = (realFaces+1.0)/2.0
-    realImgs = (realImgs+1)/2
-    fakeImg = (fakeImg+1)/2
+    realA, realB = generate_real_samples(samples)
+    fakeB = g_model.predict([realA[:samples]])
+    realA = (realA+1.0)/2.0
+    realB = (realB+1)/2
+    fakeB = (fakeB+1)/2
+
+    #print("before {}".format(fakeB))
+    #denormalization?
+    #fakeB = fakeB * 255
+    #print("after {}".format(fakeB))
     
     for i in range(samples):
-        plt.figure(figsize=(15, 15))
-        ax = plt.subplot(1, 3, 1)
-        plt.imshow(realFaces[i])
-        ax = plt.subplot(1, 3, 2)
-        plt.imshow(realImgs[i])
-        ax = plt.subplot(1, 3, 3)
-        plt.imshow(fakeImg[i])
-    plt.show()
-show_results(0,g_model,3)
+        cv2.imshow("Mask {}".format(step), realA[i])
+        cv2.imshow("RealImage {}".format(step), realB[i])
+        cv2.imshow("FakeImage {}".format(step), fakeB[i])
+        cv2.waitKey(delay)
+#show_results(0,g_model,1)
 
 # train pix2pix model
-def train(d_model, g_model, gan_model, epochs=100, batch=1):
+def train(d_model, g_model, gan_model, epochs=500, batch=1):
     # determine the output square shape of the discriminator
     patch = d_model.output_shape[1]
     steps = int(len(trainImgs) / batch)
@@ -267,24 +262,33 @@ def train(d_model, g_model, gan_model, epochs=100, batch=1):
     all_zeros = np.zeros((batch, patch, patch, 1))
     # manually enumerate epochs
     for epoch in range(epochs):
-        #show_results(epoch, g_model, samples=1)
+        if epoch % 50 == 0:
+            show_results(epoch, g_model, samples=1, delay=1)
+        if epoch == epochs:
+            show_results(epoch, g_model, samples=1, delay=0)
         print(f"Calculating next {steps} batches of size {batch}")
         for i in range(steps):
             # select a batch of real samples
-            realFaces, realImgs = generate_real_samples(batch)
+            # THE FACES AND IMAGES NAMES ARE FUCKED 
+            #realImg is a trainImg which IS A FACE MASK????
+            #realFace is a trainMap which IS A FACE IMAGE????
+            #i think this might be a correct setup, this does checkout with what Kasprowski was saying
+            # next thing is to maybe remove denormalization and let it run for longer?
+            realA, realB = generate_real_samples(batch)
+            # print(realA.shape)
+            # print(realB.shape)
 
             # generate a batch of fake samples
-            fakeImg = g_model.predict([realImgs, realFaces])
-            realFaces = np.expand_dims(realFaces, axis=-1)
-            realCombined = Concatenate()([realImgs, realFaces])
+            fakeB = g_model.predict(realA)
             # update discriminator for real samples
-            d_loss_real = d_model.train_on_batch([realImgs, realCombined], all_ones )
+            d_loss_real = d_model.train_on_batch([realA, realB], all_ones )
             # update discriminator for generated samples
-            d_loss_fake = d_model.train_on_batch([realImgs, fakeImg], all_zeros)
+            d_loss_fake = d_model.train_on_batch([realA, fakeB], all_zeros)
             # update the generator
-            print(all_ones.shape)
-            print(realImgs.shape)
-            g_loss, _, _ = gan_model.train_on_batch([realImgs, realFaces], [all_ones, realCombined])
+            # print(all_ones.shape)
+            # print(realB.shape)
+            # print(realA.shape)
+            g_loss, _, _ = gan_model.train_on_batch(realA, [all_ones, realB])
             #print(f"Iteration {i}/{n_steps} g_loss={g_loss:.3f}, d_loss_real={d_loss_real:.3f}, d_loss_fake={d_loss_fake:.3f}")
             print(".",end='')
         print()    
@@ -295,20 +299,20 @@ def save_generator(g_model, generator_path):
     
 # load image data
 image_shape = (256,256,3) #dataset[0].shape[1:]
-mask_shape = (256,256,1)
-combined_shape = (256,256,4)
 # define the models
-d_model = define_discriminator(image_shape, combined_shape)
+d_model = define_discriminator(image_shape)
 print(d_model.summary())
 print(d_model.output_shape)
-g_model = define_generator(image_shape, mask_shape)
+g_model = define_generator(image_shape)
 print(g_model.summary())
 # define the composite model
-gan_model = define_gan(g_model, d_model, image_shape, mask_shape)
+gan_model = define_gan(g_model, d_model, image_shape)
 
 # train model
-train(d_model, g_model, gan_model, 100, 32)
+train(d_model, g_model, gan_model, 60, 16)
 
-show_results(0,g_model,10)
+show_results(0,g_model,1)
 
 save_generator(g_model,generator_path)
+
+#TODO: is something wrong with image calculation? It converges to zero, however even values around 120 are not visible
