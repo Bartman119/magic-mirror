@@ -19,7 +19,7 @@ else:
 
 # Saved Generator path
 
-generator_name = 'unshaved_me_1.2'
+generator_name = 'unshaved_me_1.3'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
 IMAGES_PATH = "../training_datasets/unshaved_me/output_face_color"
@@ -314,5 +314,3 @@ train(d_model, g_model, gan_model, 60, 16)
 show_results(0,g_model,1)
 
 save_generator(g_model,generator_path)
-
-#TODO: is something wrong with image calculation? It converges to zero, however even values around 120 are not visible
