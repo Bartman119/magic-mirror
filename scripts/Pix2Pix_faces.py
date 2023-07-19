@@ -19,11 +19,11 @@ else:
 
 # Saved Generator path
 
-generator_name = 'unshaved_me_1.3'
+generator_name = 'mom_1.2_210_epoch'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
-IMAGES_PATH = "../training_datasets/unshaved_me/output_face_color"
-MASK_PATH = "../training_datasets/unshaved_me/output_face_mask"
+IMAGES_PATH = "../training_datasets/mom/output_face_color_combined"
+MASK_PATH = "../training_datasets/mom/output_face_mask_combined"
 
 # Create generator directory if needed
 if not os.path.exists(generator_path):
@@ -52,11 +52,8 @@ def load_original_images_from_folder(faceFolder, targetFolder):
 
 def load_face_images_from_folder(folder):
     for filename in os.listdir(folder):
-        
         img = cv2.imread(os.path.join(folder,filename))
         print('normal: {}'.format(img.shape))
-        # img = cv2.imread(os.path.join(folder,filename))
-        # print('grayscale: {}'.format(img.shape))
         if img is not None:
             trainImgs.append(img)
     return trainImgs
@@ -160,9 +157,6 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
 #GENERATOR MODEL
 # define the standalone generator model
 
-#possibly generator and discriminator are over-enginnered now
-#TODO: make generator take 4 dimension input (as it is now) and output a 3 dim image from it?
-#this would make discriminator simpler too
 def define_generator(image_shape=(256,256,3)):
     # weight initialization
     init = RandomNormal(stddev=0.02)
@@ -224,12 +218,7 @@ gan_model = define_gan(g_model, d_model, (256,256,3))
 # select a batch of random samples, returns images and target
 def generate_real_samples(samples):
     iImg = randint(0, trainImgs.shape[0], samples)
-    #added line
-    #iFace = randint(0, trainMaps.shape[0], samples)
-    #PREVIOUS SOLUTION
     X1, X2 = trainImgs[iImg], trainMaps[iImg]
-    #SOLUTION FOR ONE IMAGE (this will probably suck)
-    #X1, X2 = trainMaps[iImg], trainImgs[0] 
     return X1, X2
 
 
@@ -240,18 +229,12 @@ def show_results(step, g_model, samples=1, delay=0):
     realA = (realA+1.0)/2.0
     realB = (realB+1)/2
     fakeB = (fakeB+1)/2
-
-    #print("before {}".format(fakeB))
-    #denormalization?
-    #fakeB = fakeB * 255
-    #print("after {}".format(fakeB))
     
     for i in range(samples):
         cv2.imshow("Mask {}".format(step), realA[i])
         cv2.imshow("RealImage {}".format(step), realB[i])
         cv2.imshow("FakeImage {}".format(step), fakeB[i])
         cv2.waitKey(delay)
-#show_results(0,g_model,1)
 
 # train pix2pix model
 def train(d_model, g_model, gan_model, epochs=500, batch=1):
@@ -268,15 +251,7 @@ def train(d_model, g_model, gan_model, epochs=500, batch=1):
             show_results(epoch, g_model, samples=1, delay=0)
         print(f"Calculating next {steps} batches of size {batch}")
         for i in range(steps):
-            # select a batch of real samples
-            # THE FACES AND IMAGES NAMES ARE FUCKED 
-            #realImg is a trainImg which IS A FACE MASK????
-            #realFace is a trainMap which IS A FACE IMAGE????
-            #i think this might be a correct setup, this does checkout with what Kasprowski was saying
-            # next thing is to maybe remove denormalization and let it run for longer?
             realA, realB = generate_real_samples(batch)
-            # print(realA.shape)
-            # print(realB.shape)
 
             # generate a batch of fake samples
             fakeB = g_model.predict(realA)
@@ -284,10 +259,7 @@ def train(d_model, g_model, gan_model, epochs=500, batch=1):
             d_loss_real = d_model.train_on_batch([realA, realB], all_ones )
             # update discriminator for generated samples
             d_loss_fake = d_model.train_on_batch([realA, fakeB], all_zeros)
-            # update the generator
-            # print(all_ones.shape)
-            # print(realB.shape)
-            # print(realA.shape)
+
             g_loss, _, _ = gan_model.train_on_batch(realA, [all_ones, realB])
             #print(f"Iteration {i}/{n_steps} g_loss={g_loss:.3f}, d_loss_real={d_loss_real:.3f}, d_loss_fake={d_loss_fake:.3f}")
             print(".",end='')
@@ -309,7 +281,7 @@ print(g_model.summary())
 gan_model = define_gan(g_model, d_model, image_shape)
 
 # train model
-train(d_model, g_model, gan_model, 60, 16)
+train(d_model, g_model, gan_model, 210, 16)
 
 show_results(0,g_model,1)
 

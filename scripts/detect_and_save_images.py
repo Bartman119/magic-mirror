@@ -18,6 +18,8 @@ OUTPUT_FACE_MASK_PATH = "../training_datasets/mom/output_face_mask"
 OUTPUT_FACE_COLOR_PATH = "../training_datasets/mom/output_face_color"
 OUTPUT_FACE_MASK_PATH_AUGMENTED = "../training_datasets/mom/output_face_mask_augmented"
 OUTPUT_FACE_COLOR_PATH_AUGMENTED = "../training_datasets/mom/output_face_color_augmented"
+OUTPUT_FACE_MASK_COMBINED_PATH = "../training_datasets/mom/output_face_mask_combined"
+OUTPUT_FACE_COLOR_COMBINED_PATH = "../training_datasets/mom/output_face_color_combined"
 RECORDING_PATH = '../raw_recordings/mom/mom.mp4'
 
 # Define the amount of padding to be added
@@ -37,7 +39,13 @@ if not os.path.exists(OUTPUT_FACE_COLOR_PATH_AUGMENTED):
 if not os.path.exists(OUTPUT_FACE_MASK_PATH_AUGMENTED):
     os.makedirs(OUTPUT_FACE_MASK_PATH_AUGMENTED)
 
-basename = "test"
+if not os.path.exists(OUTPUT_FACE_MASK_COMBINED_PATH):
+    os.makedirs(OUTPUT_FACE_MASK_COMBINED_PATH)
+
+if not os.path.exists(OUTPUT_FACE_COLOR_COMBINED_PATH):
+    os.makedirs(OUTPUT_FACE_COLOR_COMBINED_PATH)
+
+basename = "image"
 image_count = 0
 def load_img(indir):
     global image_count
@@ -62,10 +70,9 @@ aug = ImageDataGenerator(
     fill_mode="nearest")
 
 
-def create_images_augmented(dir,images,number=500):
+def create_images_augmented(basename, dir,images,number=500):
     total = 0
     for image in images:
-
         # Apply the augmentation techniques to the padded image using ImageDataGenerator
         augmented_img = aug.random_transform(image)
 
@@ -90,14 +97,8 @@ def create_masks(dir, dirOutput):
         if not faces:
             print('face not found for image {}!'.format(i))
         for face in faces:
-            # x1 = face.left() # left point
-            # y1 = face.top() # top point
-            # x2 = face.right() # right point
-            # y2 = face.bottom() # bottom point
-
             # Create landmark object
             landmarks = predictor(image=resized_augmented_gray, box=face)
-
             image = np.zeros((resized_augmented_image.shape[0], resized_augmented_image.shape[1], 3), np.uint8)
             # Loop through all the points
             for n in range(0, 68):
@@ -107,6 +108,20 @@ def create_masks(dir, dirOutput):
                 cv2.circle(img=image, center=(x, y), radius=2, color=(255,255,255), thickness=-1)
             cv2.imwrite(dirOutput + "/{}".format(file), image)
             print('face {} saved successfully!'.format(i))
+
+def combine_original_images_and_augmented_images():
+    #iterate through mask directories and extract mask and its corresponding image
+    for file in os.listdir(OUTPUT_FACE_MASK_PATH):
+        read_mask_file = cv2.imread("{}/{}".format(OUTPUT_FACE_MASK_PATH,file))
+        read_face_file = cv2.imread("{}/{}".format(OUTPUT_FACE_COLOR_PATH,file))
+        cv2.imwrite(OUTPUT_FACE_MASK_COMBINED_PATH + "/{}".format(file), read_mask_file)
+        cv2.imwrite(OUTPUT_FACE_COLOR_COMBINED_PATH + "/{}".format(file), read_face_file)
+
+    for file in os.listdir(OUTPUT_FACE_MASK_PATH_AUGMENTED):
+        read_mask_augmented_file = cv2.imread("{}/{}".format(OUTPUT_FACE_MASK_PATH_AUGMENTED,file))
+        read_face_augmented_file = cv2.imread("{}/{}".format(OUTPUT_FACE_COLOR_PATH_AUGMENTED,file))
+        cv2.imwrite(OUTPUT_FACE_MASK_COMBINED_PATH + "/{}".format(file), read_mask_augmented_file)
+        cv2.imwrite(OUTPUT_FACE_COLOR_COMBINED_PATH + "/{}".format(file), read_face_augmented_file)
 
 rgb = cv2.VideoCapture(RECORDING_PATH)
 length = int(rgb.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -126,7 +141,6 @@ images= []
 for sm in range(1,length-1):
         ix += 1
         fr, gray_fr = __get_data__()
-
 
         # Use a face detection cascade classifier to detect the face
         face_cascade = cv2.CascadeClassifier("../haarcascade_frontalface_default.xml")
@@ -150,42 +164,13 @@ for sm in range(1,length-1):
             print('face not found')
 
 #create augmented dataset using extracted images
-create_images_augmented(OUTPUT_FACE_COLOR_PATH_AUGMENTED, images=images)
+create_images_augmented('augment', OUTPUT_FACE_COLOR_PATH_AUGMENTED, images=images)
 
 create_masks(OUTPUT_FACE_COLOR_PATH, OUTPUT_FACE_MASK_PATH)
 
 create_masks(OUTPUT_FACE_COLOR_PATH_AUGMENTED, OUTPUT_FACE_MASK_PATH_AUGMENTED)
 
-# i = 0
-# #Create mask for each image
-# for file in os.listdir(OUTPUT_FACE_COLOR_PATH):
-#     resized_augmented_image = cv2.imread("{}/{}".format(OUTPUT_FACE_COLOR_PATH,file))
-#     #print(resized_augmented_image.shape)
-
-#     resized_augmented_gray = cv2.cvtColor(resized_augmented_image, cv2.COLOR_RGB2GRAY)
-#     #print(resized_augmented_gray.shape)
-#     i += 1
-#     faces = detector(resized_augmented_gray)
-#     if not faces:
-#         print('face not found for image {}!'.format(i))
-#     for face in faces:
-#         x1 = face.left() # left point
-#         y1 = face.top() # top point
-#         x2 = face.right() # right point
-#         y2 = face.bottom() # bottom point
-
-#         # Create landmark object
-#         landmarks = predictor(image=resized_augmented_gray, box=face)
-
-#         image = np.zeros((resized_augmented_image.shape[0], resized_augmented_image.shape[1], 3), np.uint8)
-#         # Loop through all the points
-#         for n in range(0, 68):
-#             x = landmarks.part(n).x
-#             y = landmarks.part(n).y
-            
-#             cv2.circle(img=image, center=(x, y), radius=2, color=(255,255,255), thickness=-1)
-#         cv2.imwrite(OUTPUT_FACE_MASK_PATH + "/{}".format(file), image)
-#         print('face {} saved successfully!'.format(i))
+combine_original_images_and_augmented_images()
 
 rgb.release()
 
