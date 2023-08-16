@@ -27,23 +27,29 @@ pad = 200
 height_shift_up = 200
 width_shift_right = 40
 
-if not os.path.exists(OUTPUT_FACE_COLOR_PATH):
-    os.makedirs(OUTPUT_FACE_COLOR_PATH)
+def create_directory_or_remove_existing_files(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    else:
+        for file_name in os.listdir(path):
+        # construct full file path
+            file = path + "/" + file_name
+            if os.path.isfile(file):
+                print('Deleting file:', file)
+                os.remove(file)
 
-if not os.path.exists(OUTPUT_FACE_MASK_PATH):
-    os.makedirs(OUTPUT_FACE_MASK_PATH)
 
-if not os.path.exists(OUTPUT_FACE_COLOR_PATH_AUGMENTED):
-    os.makedirs(OUTPUT_FACE_COLOR_PATH_AUGMENTED)
+create_directory_or_remove_existing_files(OUTPUT_FACE_COLOR_PATH)
 
-if not os.path.exists(OUTPUT_FACE_MASK_PATH_AUGMENTED):
-    os.makedirs(OUTPUT_FACE_MASK_PATH_AUGMENTED)
+create_directory_or_remove_existing_files(OUTPUT_FACE_MASK_PATH)
 
-if not os.path.exists(OUTPUT_FACE_MASK_COMBINED_PATH):
-    os.makedirs(OUTPUT_FACE_MASK_COMBINED_PATH)
+create_directory_or_remove_existing_files(OUTPUT_FACE_COLOR_PATH_AUGMENTED)
 
-if not os.path.exists(OUTPUT_FACE_COLOR_COMBINED_PATH):
-    os.makedirs(OUTPUT_FACE_COLOR_COMBINED_PATH)
+create_directory_or_remove_existing_files(OUTPUT_FACE_MASK_PATH_AUGMENTED)
+
+create_directory_or_remove_existing_files(OUTPUT_FACE_MASK_COMBINED_PATH)
+
+create_directory_or_remove_existing_files(OUTPUT_FACE_COLOR_COMBINED_PATH)
 
 basename = "image"
 image_count = 0
@@ -62,26 +68,50 @@ def load_img(indir):
 
 aug = ImageDataGenerator(
     rotation_range=0,
-    zoom_range=0.15,
+    zoom_range=0.3,
     width_shift_range=0.2,
     height_shift_range=0.2,
     shear_range=0.15,
     horizontal_flip=True,
     fill_mode="nearest")
 
+# aug = ImageDataGenerator(
+#     rotation_range=20,
+#     zoom_range=0.15,
+#     width_shift_range=0.2,
+#     height_shift_range=0.2,
+#     shear_range=0.15,
+#     horizontal_flip=True,
+#     fill_mode="nearest")
 
-def create_images_augmented(basename, dir,images,number=500):
+# TODO: change ImageDataGenerator usage according to presentation
+
+def create_images_augmented(basename, dir,images,number=5000):
     total = 0
-    for image in images:
-        # Apply the augmentation techniques to the padded image using ImageDataGenerator
-        augmented_img = aug.random_transform(image)
+    # for image in images:
+    #     # Apply the augmentation techniques to the padded image using ImageDataGenerator
+    #     # augmented_img = aug.random_transform(image)
+    #     augmented_img = aug.flow(images)
 
+    #     total += 1
+    #     cv2.imwrite(dir + "/{}_{}.png".format(basename, total), augmented_img)
+    #     if total == number: 
+    #         print("{} images generated to {}".format(total,dir))
+    #         break
+    #     if total%(number/10)==0: print('.',end='')
+    images = np.array(images)
+    # for image in images:
+    #     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    augmented_imgs = aug.flow(images,batch_size=1)
+
+    for image in augmented_imgs:
         total += 1
-        cv2.imwrite(dir + "/{}_{}.png".format(basename, total), augmented_img)
+        resized_image = cv2.resize(image[0], (256, 256))
+        cv2.imwrite(dir + "/{}_{}.png".format(basename, total), resized_image)
         if total == number: 
             print("{} images generated to {}".format(total,dir))
             break
-        if total%(number/100)==0: print('.',end='')
+        if total%(number/10)==0: print('.',end='')
 
 def create_masks(dir, dirOutput):
     i = 0
@@ -150,6 +180,7 @@ for sm in range(1,length-1):
         print(faces)
         if len(faces) > 0:
             for (x, y, w, h) in faces:
+                #TODO: maybe this padding should be changed to a percentage value
                 face_image = fr[(y-pad-height_shift_up):y+h+pad+height_shift_up, x-pad:x+w+pad] #extend the crop to a set amount of pixels each side
                 break
 
@@ -174,7 +205,7 @@ combine_original_images_and_augmented_images()
 
 rgb.release()
 
-# Delay between every fram
+# Delay between every frame
 cv2.waitKey(delay=0)
 
 # Close all windows

@@ -19,7 +19,7 @@ else:
 
 # Saved Generator path
 
-generator_name = 'mom_1.2_210_epoch'
+generator_name = 'mom_1.2_60_epoch_20'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
 IMAGES_PATH = "../training_datasets/mom/output_face_color_combined"
@@ -53,7 +53,7 @@ def load_original_images_from_folder(faceFolder, targetFolder):
 def load_face_images_from_folder(folder):
     for filename in os.listdir(folder):
         img = cv2.imread(os.path.join(folder,filename))
-        print('normal: {}'.format(img.shape))
+        #print('normal: {}'.format(img.shape))
         if img is not None:
             trainImgs.append(img)
     return trainImgs
@@ -141,7 +141,7 @@ def decoder_block(layer_in, skip_in, n_filters, dropout=True):
     # weight initialization
     init = RandomNormal(stddev=0.02)
     # add upsampling layer
-    g = Conv2DTranspose(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
+    g = Conv2DTranspose(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in) # maybe UpSampling2D??
     # add batch normalization
     g = BatchNormalization()(g, training=True)
     # conditionally add dropout
@@ -237,14 +237,14 @@ def show_results(step, g_model, samples=1, delay=0):
         cv2.waitKey(delay)
 
 # train pix2pix model
-def train(d_model, g_model, gan_model, epochs=500, batch=1):
+def train(d_model, g_model, gan_model, generator_path, epochs=500, batch=1):
     # determine the output square shape of the discriminator
     patch = d_model.output_shape[1]
     steps = int(len(trainImgs) / batch)
     all_ones = np.ones((batch, patch, patch, 1))
     all_zeros = np.zeros((batch, patch, patch, 1))
     # manually enumerate epochs
-    for epoch in range(epochs):
+    for epoch in range(21, epochs):
         if epoch % 50 == 0:
             show_results(epoch, g_model, samples=1, delay=1)
         if epoch == epochs:
@@ -265,6 +265,8 @@ def train(d_model, g_model, gan_model, epochs=500, batch=1):
             print(".",end='')
         print()    
         print(f"Epoch {epoch} g_loss={g_loss:.3f}, d_loss_real={d_loss_real:.3f}, d_loss_fake={d_loss_fake:.3f}")
+        if epoch % 10 == 0:
+            g_model.save("{}_{}".format(generator_path, epoch))
 
 def save_generator(g_model, generator_path):
     g_model.save(generator_path)
@@ -281,8 +283,8 @@ print(g_model.summary())
 gan_model = define_gan(g_model, d_model, image_shape)
 
 # train model
-train(d_model, g_model, gan_model, 210, 16)
+train(d_model, g_model, gan_model, generator_path,  60, 16)
 
-show_results(0,g_model,1)
+show_results(0,g_model,1, 1)
 
 save_generator(g_model,generator_path)
