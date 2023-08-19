@@ -19,11 +19,11 @@ else:
 
 # Saved Generator path
 
-generator_name = 'mom_1.2_60_epoch_20'
+generator_name = 'mom_1.3'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
-IMAGES_PATH = "../training_datasets/mom/output_face_color_combined"
-MASK_PATH = "../training_datasets/mom/output_face_mask_combined"
+IMAGES_PATH = "../training_datasets/mom/output_face_color"
+MASK_PATH = "../training_datasets/mom/output_face_mask"
 
 # Create generator directory if needed
 if not os.path.exists(generator_path):
@@ -244,7 +244,7 @@ def train(d_model, g_model, gan_model, generator_path, epochs=500, batch=1):
     all_ones = np.ones((batch, patch, patch, 1))
     all_zeros = np.zeros((batch, patch, patch, 1))
     # manually enumerate epochs
-    for epoch in range(21, epochs):
+    for epoch in range(1, epochs):
         if epoch % 50 == 0:
             show_results(epoch, g_model, samples=1, delay=1)
         if epoch == epochs:
@@ -283,7 +283,7 @@ print(g_model.summary())
 gan_model = define_gan(g_model, d_model, image_shape)
 
 # train model
-train(d_model, g_model, gan_model, generator_path,  60, 16)
+train(d_model, g_model, gan_model, generator_path,  60, 8)
 
 show_results(0,g_model,1, 1)
 

@@ -174,14 +174,14 @@ for sm in range(1,length-1):
 
         # Use a face detection cascade classifier to detect the face
         face_cascade = cv2.CascadeClassifier("../haarcascade_frontalface_default.xml")
-        faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.5, minNeighbors=5)
+        faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.1, minNeighbors=3) #TODO: scaleFactor seems important for face size
 
         # Extract the face from the image and crop the image to focus on the face
         print(faces)
         if len(faces) > 0:
             for (x, y, w, h) in faces:
-                #TODO: maybe this padding should be changed to a percentage value
-                face_image = fr[(y-pad-height_shift_up):y+h+pad+height_shift_up, x-pad:x+w+pad] #extend the crop to a set amount of pixels each side
+                #TODO: maybe extend lower y value 
+                face_image = fr[y-int((0.2*(h-y))):y+h+int(0.2*(h-y)), x-int(0.2*(w-x)):x+w+int(0.2*(w-x))] #extend the crop to a set amount of pixels each side
                 break
 
             # Resize the image to 256x256

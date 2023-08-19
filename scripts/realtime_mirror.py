@@ -18,7 +18,7 @@ detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("../shape_predictor_68_face_landmarks.dat")
 
 # Load the model
-generator_name = 'mom_1.2_60_epoch_50'
+generator_name = 'mom_1.3_50'
 current_directory = os.path.join(os.getcwd(), '../')
 generator_path = os.path.join(current_directory, r'saved_generator/'+generator_name)
 g_model = tf.keras.models.load_model(generator_path, compile=False)
@@ -30,9 +30,9 @@ g_model = tf.keras.models.load_model(generator_path, compile=False)
 # and is focusing on everything around it as well
 # i think it would be better to extract face and fill the whole image with it 
 
-pad = 200
-height_shift_up = 100
-width_shift_right = 40
+# pad = 200
+# height_shift_up = 100
+# width_shift_right = 40
 # pad = 0
 # height_shift_up = 0
 # width_shift_right = 0
@@ -74,7 +74,7 @@ while True:
     realImg, gray_fr = __get_data__()
 
     face_cascade = cv2.CascadeClassifier("../haarcascade_frontalface_default.xml") #TODO: move up 
-    faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.5, minNeighbors=5)
+    faces = face_cascade.detectMultiScale(gray_fr, scaleFactor=1.2, minNeighbors=3)
 
     # Extract the face from the image and crop the image to focus on the face
     # for (x, y, w, h) in faces:
@@ -86,7 +86,7 @@ while True:
     if len(faces) > 0:
         # Extract the face from the image and crop the image to focus on the face
         for (x, y, w, h) in faces:
-            face_image = realImg[(y-pad+height_shift_up):y+h+pad+height_shift_up, x-pad:x+w+pad] #extend the crop to a set amount of pixels each side
+            face_image = realImg[y-int((0.2*(h-y))):y+h+int(0.2*(h-y)), x-int(0.2*(w-x)):x+w+int(0.2*(w-x))] #extend the crop to a set amount of pixels each side
             break
 
         
