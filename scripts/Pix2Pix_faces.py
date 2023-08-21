@@ -19,11 +19,11 @@ else:
 
 # Saved Generator path
 
-generator_name = 'mom_1.3'
+generator_name = 'mom_1.4_combined'
 current_directory = os.getcwd() 
 generator_path = os.path.join(current_directory, r'../saved_generator/'+generator_name)
-IMAGES_PATH = "../training_datasets/mom/output_face_color"
-MASK_PATH = "../training_datasets/mom/output_face_mask"
+IMAGES_PATH = "../training_datasets/mom/output_face_color_combined"
+MASK_PATH = "../training_datasets/mom/output_face_mask_combined"
 
 # Create generator directory if needed
 if not os.path.exists(generator_path):
@@ -244,9 +244,10 @@ def train(d_model, g_model, gan_model, generator_path, epochs=500, batch=1):
     all_ones = np.ones((batch, patch, patch, 1))
     all_zeros = np.zeros((batch, patch, patch, 1))
     # manually enumerate epochs
-    for epoch in range(1, epochs):
+    for epoch in range(1, epochs+1):
         if epoch % 50 == 0:
             show_results(epoch, g_model, samples=1, delay=1)
+            g_model.save("{}_{}".format(generator_path, epoch))
         if epoch == epochs:
             show_results(epoch, g_model, samples=1, delay=0)
         print(f"Calculating next {steps} batches of size {batch}")
@@ -265,8 +266,6 @@ def train(d_model, g_model, gan_model, generator_path, epochs=500, batch=1):
             print(".",end='')
         print()    
         print(f"Epoch {epoch} g_loss={g_loss:.3f}, d_loss_real={d_loss_real:.3f}, d_loss_fake={d_loss_fake:.3f}")
-        if epoch % 10 == 0:
-            g_model.save("{}_{}".format(generator_path, epoch))
 
 def save_generator(g_model, generator_path):
     g_model.save(generator_path)
@@ -283,7 +282,7 @@ print(g_model.summary())
 gan_model = define_gan(g_model, d_model, image_shape)
 
 # train model
-train(d_model, g_model, gan_model, generator_path,  60, 8)
+train(d_model, g_model, gan_model, generator_path,  250, 16)
 
 show_results(0,g_model,1, 1)
 
